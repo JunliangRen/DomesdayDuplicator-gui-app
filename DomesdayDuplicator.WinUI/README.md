@@ -1,6 +1,6 @@
 # Domesday Duplicator - WinUI 3 Edition
 
-A modern Windows desktop application for the [Domesday Duplicator](https://github.com/simoninns/DomesdayDuplicator) LaserDisc RF capture device, built with WinUI 3 and .NET 8.
+A modern Windows desktop application for the [Domesday Duplicator](https://github.com/simoninns/DomesdayDuplicator) LaserDisc RF capture device, built with WinUI 3 and .NET 10.
 
 ## 🎯 Key Features
 
@@ -37,8 +37,8 @@ The .NET GC can pause all managed threads for garbage collection. During a 40 MH
 ## 📋 Requirements
 
 - Windows 10 19041+ / Windows 11
-- .NET 8 SDK
-- Visual Studio 2022 17.8+ with:
+- .NET 10 SDK
+- Visual Studio 2022 17.14+ with:
   - ".NET desktop development" workload
   - "Windows App SDK" component
 - Domesday Duplicator hardware (VID: 0x1D50, PID: 0x603B)
