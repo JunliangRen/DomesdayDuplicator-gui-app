@@ -8,7 +8,6 @@ A modern Windows desktop application for the [Domesday Duplicator](https://githu
 - **Zero-GC Hot Path** — All USB buffers use `NativeMemory` (unmanaged heap), ensuring the .NET garbage collector never pauses the capture pipeline
 - **Three-Thread Architecture** — USB Transfer → Processing → Disk I/O pipeline (matching the original C++ design)
 - **Modern WinUI 3 UI** — Mica backdrop, card-based layout, NavigationView, dark/light theme support
-- **LaserDisc Player Control** — Serial port remote control for supported LaserDisc players
 - **Data Conversion** — Convert between 10-bit packed and 16-bit signed formats
 - **Test Data Verification** — Validate FPGA test pattern integrity
 
@@ -71,19 +70,16 @@ DomesdayDuplicator.WinUI/
 │   │   └── DeviceInfo.cs          #   USB device information
 │   ├── Services/                  # Business logic layer
 │   │   ├── UsbCaptureService.cs   #   Device management + capture control
-│   │   ├── PlayerCommunicationService.cs # Serial port player control
 │   │   ├── DataConversionService.cs    # 10-bit ↔ 16-bit conversion
 │   │   └── ConfigurationService.cs     # JSON settings persistence
 │   ├── ViewModels/                # MVVM ViewModels
 │   │   ├── DashboardViewModel.cs  #   Home page with device status
 │   │   ├── CaptureViewModel.cs    #   Capture controls + live stats
-│   │   ├── PlayerControlViewModel.cs # Remote control emulation
 │   │   ├── DataConversionViewModel.cs # File conversion UI logic
 │   │   └── SettingsViewModel.cs   #   Application settings
 │   ├── Views/                     # WinUI 3 XAML pages
 │   │   ├── DashboardPage.xaml     #   Card-based dashboard
 │   │   ├── CapturePage.xaml       #   Capture controls + metadata
-│   │   ├── PlayerControlPage.xaml #   Remote control with keypad
 │   │   ├── DataConversionPage.xaml#   Conversion + verification
 │   │   └── SettingsPage.xaml      #   Configuration cards
 │   ├── Styles/AppStyles.xaml      # Shared styles (CardStyle, etc.)

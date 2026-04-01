@@ -37,17 +37,6 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] private int _selectedCaptureFormatIndex;
 
-    // ── Serial port ──────────────────────────────────────────────
-    [ObservableProperty] private string[] _availablePorts = [];
-    [ObservableProperty] private string _selectedPort = string.Empty;
-
-    public string[] SerialSpeedOptions { get; } =
-    [
-        "1200", "2400", "4800", "9600", "Auto-detect"
-    ];
-
-    [ObservableProperty] private int _selectedSerialSpeedIndex = 3; // 9600 default
-
     // ── UI theme ─────────────────────────────────────────────────
     public string[] ThemeOptions { get; } = ["System", "Light", "Dark"];
     [ObservableProperty] private int _selectedThemeIndex;
@@ -80,25 +69,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         };
 
         SelectedCaptureFormatIndex = (int)c.CaptureFormat;
-        SelectedPort = c.SerialPortName;
-
-        SelectedSerialSpeedIndex = c.SerialSpeed switch
-        {
-            SerialSpeed.Bps1200 => 0,
-            SerialSpeed.Bps2400 => 1,
-            SerialSpeed.Bps4800 => 2,
-            SerialSpeed.Bps9600 => 3,
-            SerialSpeed.AutoDetect => 4,
-            _ => 3
-        };
-
-        RefreshPorts();
-    }
-
-    [RelayCommand]
-    private void RefreshPorts()
-    {
-        AvailablePorts = System.IO.Ports.SerialPort.GetPortNames();
     }
 
     [RelayCommand]
@@ -126,17 +96,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         };
 
         c.CaptureFormat = (CaptureFormat)SelectedCaptureFormatIndex;
-        c.SerialPortName = SelectedPort;
-
-        c.SerialSpeed = SelectedSerialSpeedIndex switch
-        {
-            0 => SerialSpeed.Bps1200,
-            1 => SerialSpeed.Bps2400,
-            2 => SerialSpeed.Bps4800,
-            3 => SerialSpeed.Bps9600,
-            4 => SerialSpeed.AutoDetect,
-            _ => SerialSpeed.Bps9600
-        };
 
         _configService.Save();
     }

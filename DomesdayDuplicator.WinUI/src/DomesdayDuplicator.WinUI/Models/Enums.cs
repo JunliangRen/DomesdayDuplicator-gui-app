@@ -38,33 +38,6 @@ public enum TransferResult
 }
 
 /// <summary>
-/// Serial port baud rates for LaserDisc player communication.
-/// </summary>
-public enum SerialSpeed
-{
-    Bps1200 = 1200,
-    Bps2400 = 2400,
-    Bps4800 = 4800,
-    Bps9600 = 9600,
-    AutoDetect = 0
-}
-
-/// <summary>
-/// LaserDisc player operational state.
-/// </summary>
-public enum PlayerState
-{
-    Disconnected,
-    Stopped,
-    Playing,
-    Paused,
-    Scanning,
-    Searching,
-    SpeedChanged,
-    Unknown
-}
-
-/// <summary>
 /// Disc type for automatic capture.
 /// </summary>
 public enum DiscType

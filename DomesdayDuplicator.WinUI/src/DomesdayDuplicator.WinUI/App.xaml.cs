@@ -35,7 +35,6 @@ public partial class App : Application
 
         ServiceLocator.Register(
             usbCapture: new UsbCaptureService(),
-            playerComm: new PlayerCommunicationService(),
             dataConversion: new DataConversionService(),
             configuration: configService);
 

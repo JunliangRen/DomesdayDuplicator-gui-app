@@ -49,9 +49,6 @@ public sealed class ConfigurationService : IConfigurationService
             Configuration.UseSmallUsbTransfers = saved.UseSmallUsbTransfers;
             Configuration.UseWinUsb = saved.UseWinUsb;
             Configuration.UseAsyncFileIo = saved.UseAsyncFileIo;
-            Configuration.SerialPortName = saved.SerialPortName ?? string.Empty;
-            Configuration.SerialSpeed = saved.SerialSpeed;
-            Configuration.KeyLockEnabled = saved.KeyLockEnabled;
             Configuration.ShowAmplitudeLabel = saved.ShowAmplitudeLabel;
             Configuration.ShowAmplitudeChart = saved.ShowAmplitudeChart;
             Configuration.ShowAdvancedCaptureStats = saved.ShowAdvancedCaptureStats;
@@ -80,9 +77,6 @@ public sealed class ConfigurationService : IConfigurationService
                 UseSmallUsbTransfers = Configuration.UseSmallUsbTransfers,
                 UseWinUsb = Configuration.UseWinUsb,
                 UseAsyncFileIo = Configuration.UseAsyncFileIo,
-                SerialPortName = Configuration.SerialPortName,
-                SerialSpeed = Configuration.SerialSpeed,
-                KeyLockEnabled = Configuration.KeyLockEnabled,
                 ShowAmplitudeLabel = Configuration.ShowAmplitudeLabel,
                 ShowAmplitudeChart = Configuration.ShowAmplitudeChart,
                 ShowAdvancedCaptureStats = Configuration.ShowAdvancedCaptureStats
@@ -109,9 +103,6 @@ public sealed class ConfigurationService : IConfigurationService
         Configuration.UseSmallUsbTransfers = fresh.UseSmallUsbTransfers;
         Configuration.UseWinUsb = fresh.UseWinUsb;
         Configuration.UseAsyncFileIo = fresh.UseAsyncFileIo;
-        Configuration.SerialPortName = fresh.SerialPortName;
-        Configuration.SerialSpeed = fresh.SerialSpeed;
-        Configuration.KeyLockEnabled = fresh.KeyLockEnabled;
         Configuration.ShowAmplitudeLabel = fresh.ShowAmplitudeLabel;
         Configuration.ShowAmplitudeChart = fresh.ShowAmplitudeChart;
         Configuration.ShowAdvancedCaptureStats = fresh.ShowAdvancedCaptureStats;
@@ -129,9 +120,6 @@ public sealed class ConfigurationService : IConfigurationService
         public bool UseSmallUsbTransfers { get; set; }
         public bool UseWinUsb { get; set; }
         public bool UseAsyncFileIo { get; set; }
-        public string? SerialPortName { get; set; }
-        public SerialSpeed SerialSpeed { get; set; }
-        public bool KeyLockEnabled { get; set; }
         public bool ShowAmplitudeLabel { get; set; }
         public bool ShowAmplitudeChart { get; set; }
         public bool ShowAdvancedCaptureStats { get; set; }

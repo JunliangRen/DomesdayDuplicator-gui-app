@@ -48,7 +48,6 @@ public sealed partial class MainWindow : Window
         {
             "Dashboard" => typeof(DashboardPage),
             "Capture" => typeof(CapturePage),
-            "PlayerControl" => typeof(PlayerControlPage),
             "DataConversion" => typeof(DataConversionPage),
             "Settings" => typeof(SettingsPage),
             _ => typeof(DashboardPage)

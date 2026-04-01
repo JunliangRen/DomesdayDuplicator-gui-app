@@ -29,8 +29,6 @@ public sealed partial class CaptureViewModel : ObservableObject
     [ObservableProperty] private bool _isTestMode;
     [ObservableProperty] private bool _limitDuration;
     [ObservableProperty] private TimeSpan _durationLimit = TimeSpan.FromMinutes(60);
-    [ObservableProperty] private bool _stopPlayerWhenCaptureStops;
-    [ObservableProperty] private bool _stopCaptureWhenPlayerStops;
 
     // ── Disc metadata ────────────────────────────────────────────
     [ObservableProperty] private string _discTitle = string.Empty;

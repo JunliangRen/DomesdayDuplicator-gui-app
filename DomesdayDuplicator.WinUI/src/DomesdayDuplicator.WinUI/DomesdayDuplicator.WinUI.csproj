@@ -40,9 +40,6 @@
     <None Update="Views\DashboardPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </None>
-    <None Update="Views\PlayerControlPage.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </None>
     <None Update="Views\DataConversionPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </None>

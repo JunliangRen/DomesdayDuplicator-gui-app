@@ -80,8 +80,6 @@
                         <TimePicker Header="Duration Limit"
                                     Visibility="{x:Bind ViewModel.LimitDuration, Mode=OneWay, Converter={StaticResource BoolToVis}}"
                                     ClockIdentifier="24HourClock" />
-                        <CheckBox Content="Stop player when capture stops"
-                                  IsChecked="{x:Bind ViewModel.StopPlayerWhenCaptureStops, Mode=TwoWay}" />
                     </StackPanel>
 
                     <!-- Not connected warning -->

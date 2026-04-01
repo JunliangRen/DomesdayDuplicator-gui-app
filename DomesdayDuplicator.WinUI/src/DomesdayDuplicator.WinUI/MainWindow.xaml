@@ -59,11 +59,6 @@
                         <FontIcon Glyph="&#xE714;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Player Control" Tag="PlayerControl">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE768;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
                 <NavigationViewItem Content="Data Conversion" Tag="DataConversion">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE8AB;" />

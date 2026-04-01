@@ -34,11 +34,6 @@ public sealed partial class CaptureConfiguration : ObservableObject
     /// <summary>Use overlapped/async file I/O on Windows.</summary>
     [ObservableProperty] private bool _useAsyncFileIo = true;
 
-    // ── Player control ───────────────────────────────────────────
-    [ObservableProperty] private string _serialPortName = string.Empty;
-    [ObservableProperty] private SerialSpeed _serialSpeed = SerialSpeed.Bps9600;
-    [ObservableProperty] private bool _keyLockEnabled;
-
     // ── UI preferences ───────────────────────────────────────────
     [ObservableProperty] private bool _showAmplitudeLabel = true;
     [ObservableProperty] private bool _showAmplitudeChart = true;

@@ -12,15 +12,11 @@ namespace DomesdayDuplicator.WinUI.Helpers;
 public static class ServiceLocator
 {
     private static IUsbCaptureService? _usbCapture;
-    private static IPlayerCommunicationService? _playerComm;
     private static IDataConversionService? _dataConversion;
     private static IConfigurationService? _configuration;
 
     public static IUsbCaptureService UsbCapture =>
         _usbCapture ?? throw new InvalidOperationException("UsbCaptureService not registered");
-
-    public static IPlayerCommunicationService PlayerCommunication =>
-        _playerComm ?? throw new InvalidOperationException("PlayerCommunicationService not registered");
 
     public static IDataConversionService DataConversion =>
         _dataConversion ?? throw new InvalidOperationException("DataConversionService not registered");
@@ -30,12 +26,10 @@ public static class ServiceLocator
 
     public static void Register(
         IUsbCaptureService usbCapture,
-        IPlayerCommunicationService playerComm,
         IDataConversionService dataConversion,
         IConfigurationService configuration)
     {
         _usbCapture = usbCapture;
-        _playerComm = playerComm;
         _dataConversion = dataConversion;
         _configuration = configuration;
     }

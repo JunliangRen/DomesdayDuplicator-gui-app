@@ -107,50 +107,6 @@
                 </StackPanel>
             </Border>
 
-            <!-- ── Player Control Settings ─────────────────────── -->
-            <Border Style="{StaticResource CardStyle}">
-                <StackPanel Padding="24" Spacing="16">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE768;" FontSize="18"
-                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                        <TextBlock Text="Player Control"
-                                   Style="{StaticResource SubtitleTextBlockStyle}" />
-                    </StackPanel>
-
-                    <Grid ColumnSpacing="16" RowSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <ComboBox Grid.Column="0"
-                                  Header="Serial Port"
-                                  ItemsSource="{x:Bind ViewModel.AvailablePorts, Mode=OneWay}"
-                                  SelectedItem="{x:Bind ViewModel.SelectedPort, Mode=TwoWay}"
-                                  MinWidth="200">
-                            <ComboBox.HeaderTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding}" />
-                                        <HyperlinkButton Content="Refresh" FontSize="12"
-                                                         Command="{Binding RefreshPortsCommand}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ComboBox.HeaderTemplate>
-                        </ComboBox>
-
-                        <ComboBox Grid.Column="1"
-                                  Header="Serial Speed"
-                                  ItemsSource="{x:Bind ViewModel.SerialSpeedOptions}"
-                                  SelectedIndex="{x:Bind ViewModel.SelectedSerialSpeedIndex, Mode=TwoWay}"
-                                  MinWidth="150" />
-                    </Grid>
-
-                    <CheckBox Content="Enable key-lock during capture"
-                              IsChecked="{x:Bind ViewModel.Config.KeyLockEnabled, Mode=TwoWay}" />
-                </StackPanel>
-            </Border>
-
             <!-- ── UI Settings ─────────────────────────────────── -->
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel Padding="24" Spacing="16">
