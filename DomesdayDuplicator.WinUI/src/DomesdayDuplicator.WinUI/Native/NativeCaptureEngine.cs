@@ -377,7 +377,7 @@ public sealed class NativeCaptureEngine : IDisposable
 
             try
             {
-                var overlapped = new NativeOverlapped { EventHandle = hEvent };
+                var overlapped = new WinUsbInterop.NativeOverlapped { EventHandle = hEvent };
 
                 bool success = WinUsb_ReadPipe(
                     winUsbHandle, pipeId,
