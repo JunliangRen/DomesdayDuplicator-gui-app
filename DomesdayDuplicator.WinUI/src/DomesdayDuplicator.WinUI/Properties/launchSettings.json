@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DomesdayDuplicator.WinUI (Unpackaged)": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
