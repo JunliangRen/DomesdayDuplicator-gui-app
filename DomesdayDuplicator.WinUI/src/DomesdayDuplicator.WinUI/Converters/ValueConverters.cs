@@ -3,6 +3,7 @@
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
+using Windows.UI;
 
 namespace DomesdayDuplicator.WinUI.Converters;
 
@@ -79,4 +80,47 @@ public sealed class TimeSpanConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)
         => throw new NotImplementedException();
+}
+
+/// <summary>
+/// Converts boolean to Color (true → green connected, false → gray disconnected).
+/// </summary>
+public sealed class BoolToColorConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        bool isTrue = value is true;
+        return isTrue
+            ? Color.FromArgb(255, 16, 185, 129)   // Green (#10B981)
+            : Color.FromArgb(255, 107, 114, 128);  // Gray (#6B7280)
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language)
+        => throw new NotImplementedException();
+}
+
+/// <summary>
+/// Converts string to Visibility (non-empty → Visible, empty/null → Collapsed).
+/// </summary>
+public sealed class StringToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        return string.IsNullOrEmpty(value as string) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language)
+        => throw new NotImplementedException();
+}
+
+/// <summary>
+/// Inverts a boolean value (true → false, false → true).
+/// </summary>
+public sealed class InvertBoolConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language)
+        => value is not true;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language)
+        => value is not true;
 }

@@ -13,6 +13,7 @@
 
     <Page.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter" />
     </Page.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="36,24,36,24">
