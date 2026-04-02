@@ -26,6 +26,15 @@
     <Content Include="Assets\**" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260317003" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7705" />
+    <!--
+      Fix APPX1101: WindowsAppSDKSelfContained already bundles WebView2 native DLLs
+      into MsixContent. The transitive WebView2 NuGet dependency also contributes a
+      copy from its native_uap folder, causing a duplicate payload error.
+      Explicitly reference WebView2 with ExcludeAssets="native" to suppress the
+      duplicate native DLL while keeping the managed projection assembly.
+      See: https://github.com/microsoft/WindowsAppSDK/issues/3639
+    -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" ExcludeAssets="native" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Primitives" Version="8.2.251219" />
