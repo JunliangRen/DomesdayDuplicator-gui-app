@@ -25,6 +25,17 @@ public partial class App : Application
         // this ensures the capture pipeline stays uninterrupted.
         System.Runtime.GCSettings.LatencyMode =
             System.Runtime.GCLatencyMode.SustainedLowLatency;
+
+        // ── Global exception handling ───────────────────────────
+        UnhandledException += OnUnhandledException;
+    }
+
+    private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        // Prevent crash from unhandled exceptions (including native/SEH)
+        // so the user gets a chance to see the error instead of a silent crash.
+        e.Handled = true;
+        System.Diagnostics.Debug.WriteLine($"[Unhandled Exception] {e.Exception}");
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

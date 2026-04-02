@@ -94,19 +94,27 @@ public sealed partial class DashboardViewModel : ObservableObject
     [RelayCommand]
     private void TryScanForDevice()
     {
-        var config = _config.Configuration;
-        var devices = _usb.EnumerateDevices();
-
-        foreach (var path in devices)
+        try
         {
-            var device = _usb.Connect(path, config.UsbVendorId, config.UsbProductId);
-            if (device != null)
+            var config = _config.Configuration;
+            var devices = _usb.EnumerateDevices();
+
+            foreach (var path in devices)
             {
-                IsDeviceConnected = true;
-                DeviceStatusText = "Device connected";
-                DeviceDescription = device.Description;
-                return;
+                var device = _usb.Connect(path, config.UsbVendorId, config.UsbProductId);
+                if (device != null)
+                {
+                    IsDeviceConnected = true;
+                    DeviceStatusText = "Device connected";
+                    DeviceDescription = device.Description;
+                    return;
+                }
             }
+        }
+        catch
+        {
+            // Native interop failure — device scanning unavailable
+            DeviceStatusText = "Device scan failed";
         }
     }
 

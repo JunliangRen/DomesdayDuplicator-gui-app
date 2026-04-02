@@ -101,42 +101,64 @@ public sealed class NativeCaptureEngine : IDisposable
 
     /// <summary>
     /// Enumerate connected Domesday Duplicator devices via CfgMgr32.
+    /// Returns an empty list if the native call fails (e.g. DLL not found).
     /// </summary>
     public static List<string> EnumerateDevices()
     {
         var devices = new List<string>();
-        var guid = GUID_DEVINTERFACE_USB_DEVICE;
 
-        uint result = CM_Get_Device_Interface_List_SizeW(out uint len, ref guid, nint.Zero,
-            CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
-        if (result != CR_SUCCESS || len == 0) return devices;
-
-        var buffer = new char[len];
-        result = CM_Get_Device_Interface_ListW(ref guid, nint.Zero, buffer, len,
-            CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
-        if (result != CR_SUCCESS) return devices;
-
-        // Parse multi-string: null-terminated strings with double-null terminator
-        int start = 0;
-        for (int i = 0; i < buffer.Length - 1; i++)
+        try
         {
-            if (buffer[i] == '\0')
+            var guid = GUID_DEVINTERFACE_USB_DEVICE;
+
+            uint result = CM_Get_Device_Interface_List_SizeW(out uint len, ref guid, nint.Zero,
+                CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
+            if (result != CR_SUCCESS || len == 0) return devices;
+
+            var buffer = new char[len];
+            result = CM_Get_Device_Interface_ListW(ref guid, nint.Zero, buffer, len,
+                CM_GET_DEVICE_INTERFACE_LIST_PRESENT);
+            if (result != CR_SUCCESS) return devices;
+
+            // Parse multi-string: null-terminated strings with double-null terminator
+            int start = 0;
+            for (int i = 0; i < buffer.Length - 1; i++)
             {
-                if (i > start)
+                if (buffer[i] == '\0')
                 {
-                    devices.Add(new string(buffer, start, i - start));
+                    if (i > start)
+                    {
+                        devices.Add(new string(buffer, start, i - start));
+                    }
+                    start = i + 1;
+                    if (buffer[i + 1] == '\0') break;
                 }
-                start = i + 1;
-                if (buffer[i + 1] == '\0') break;
             }
         }
+        catch (DllNotFoundException ex) { Debug.WriteLine($"[EnumerateDevices] DLL not found: {ex.Message}"); }
+        catch (EntryPointNotFoundException ex) { Debug.WriteLine($"[EnumerateDevices] Entry point not found: {ex.Message}"); }
+        catch (System.Runtime.InteropServices.SEHException ex) { Debug.WriteLine($"[EnumerateDevices] SEH exception: {ex.Message}"); }
+
         return devices;
     }
 
     /// <summary>
     /// Open a WinUSB device and validate it matches the expected VID/PID.
+    /// Returns null if the device cannot be opened or any native call fails.
     /// </summary>
     public DeviceInfo? OpenDevice(string devicePath, ushort expectedVid, ushort expectedPid)
+    {
+        try
+        {
+            return OpenDeviceCore(devicePath, expectedVid, expectedPid);
+        }
+        catch (DllNotFoundException ex) { Debug.WriteLine($"[OpenDevice] DLL not found: {ex.Message}"); return null; }
+        catch (EntryPointNotFoundException ex) { Debug.WriteLine($"[OpenDevice] Entry point not found: {ex.Message}"); return null; }
+        catch (System.Runtime.InteropServices.SEHException ex) { Debug.WriteLine($"[OpenDevice] SEH exception: {ex.Message}"); return null; }
+        catch (AccessViolationException ex) { Debug.WriteLine($"[OpenDevice] Access violation: {ex.Message}"); return null; }
+    }
+
+    private DeviceInfo? OpenDeviceCore(string devicePath, ushort expectedVid, ushort expectedPid)
     {
         CloseDevice();
 
@@ -655,14 +677,31 @@ public sealed class NativeCaptureEngine : IDisposable
 
     public void CloseDevice()
     {
-        if (_winUsbHandle != nint.Zero)
+        try
         {
-            WinUsb_Free(_winUsbHandle);
+            if (_winUsbHandle != nint.Zero)
+            {
+                WinUsb_Free(_winUsbHandle);
+                _winUsbHandle = nint.Zero;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[CloseDevice] WinUsb_Free failed: {ex.Message}");
             _winUsbHandle = nint.Zero;
         }
-        if (_deviceHandle != INVALID_HANDLE_VALUE)
+
+        try
         {
-            CloseHandle(_deviceHandle);
+            if (_deviceHandle != INVALID_HANDLE_VALUE)
+            {
+                CloseHandle(_deviceHandle);
+                _deviceHandle = INVALID_HANDLE_VALUE;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[CloseDevice] CloseHandle failed: {ex.Message}");
             _deviceHandle = INVALID_HANDLE_VALUE;
         }
     }
