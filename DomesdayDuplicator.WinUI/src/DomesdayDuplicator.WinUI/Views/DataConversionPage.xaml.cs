@@ -62,10 +62,7 @@ public sealed partial class DataConversionPage : Page
         }
 
         // Initialize picker with window handle
-        var window = App.Current as App;
-        var hWnd = WindowNative.GetWindowHandle(
-            ((Microsoft.UI.Xaml.Application)App.Current).Resources["MainWindow"] as Window
-            ?? throw new InvalidOperationException("Main window not found"));
+        var hWnd = GetWindowHandle();
         InitializeWithWindow.Initialize(picker, hWnd);
 
         var file = await picker.PickSaveFileAsync();
@@ -93,9 +90,9 @@ public sealed partial class DataConversionPage : Page
 
     private static nint GetWindowHandle()
     {
-        // Walk up to find the main window handle
-        return WinRT.Interop.WindowNative.GetWindowHandle(
-            ((Microsoft.UI.Xaml.Application)App.Current).Resources["MainWindow"] as Window
-            ?? throw new InvalidOperationException("Cannot get window handle"));
+        // Use the static MainWindow property set during App.OnLaunched
+        var window = App.MainWindow
+            ?? throw new InvalidOperationException("Main window not available");
+        return WinRT.Interop.WindowNative.GetWindowHandle(window);
     }
 }

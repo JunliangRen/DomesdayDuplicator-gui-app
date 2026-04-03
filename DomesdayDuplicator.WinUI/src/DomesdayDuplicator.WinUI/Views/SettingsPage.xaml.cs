@@ -27,10 +27,9 @@ public sealed partial class SettingsPage : Page
         picker.FileTypeFilter.Add("*");
 
         // WinUI 3 desktop requires explicit HWND initialization
-        var window = App.Current as App;
-        var hWnd = WindowNative.GetWindowHandle(
-            ((Microsoft.UI.Xaml.Application)App.Current).Resources["MainWindow"] as Window
-            ?? throw new InvalidOperationException("Main window not found"));
+        var window = App.MainWindow
+            ?? throw new InvalidOperationException("Main window not available");
+        var hWnd = WindowNative.GetWindowHandle(window);
         InitializeWithWindow.Initialize(picker, hWnd);
 
         var folder = await picker.PickSingleFolderAsync();
