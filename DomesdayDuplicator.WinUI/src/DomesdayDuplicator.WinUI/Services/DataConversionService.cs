@@ -4,6 +4,8 @@
 // Data conversion between 10-bit packed and 16-bit signed formats.
 // Matches the original C++ dddconv/dddutil algorithms.
 
+using System.Diagnostics;
+
 namespace DomesdayDuplicator.WinUI.Services;
 
 /// <summary>
@@ -140,8 +142,8 @@ public sealed class DataConversionService : IDataConversionService
             long samplesProcessed = 0;
             var readBuffer = new byte[BufferSizeBytes];
 
-            int expectedValue = -1;
-            int testDataMax = 0;
+            int? expectedNextValue = null;
+            int? testDataMax = null;
 
             while (true)
             {
@@ -166,33 +168,35 @@ public sealed class DataConversionService : IDataConversionService
                         samples[i] = (ushort)(signed16 / 64 + 512);
                     }
                 }
-
                 foreach (var sample in samples)
                 {
-                    if (expectedValue < 0)
+                    int expectedValue = expectedNextValue ?? sample;
+
+                    if (!testDataMax.HasValue &&
+                        expectedValue != sample &&
+                        sample == 0 &&
+                        (expectedValue == 1021 || expectedValue == 1024))
                     {
-                        expectedValue = sample;
+                        testDataMax = expectedValue;
+                        expectedNextValue = 1;
                         continue;
                     }
 
                     if (sample != expectedValue)
                     {
-                        if (testDataMax == 0 && sample == 0)
-                        {
-                            testDataMax = expectedValue; // Auto-detect wrap point
-                        }
-                        else
-                        {
-                            return false; // Test failed
-                        }
+                        Debug.WriteLine($"[VerifyTestDataAsync] Mismatch in '{inputPath}' at sample {samplesProcessed}: expected {expectedValue}, actual {sample}, isTenBit={isTenBit}, testDataMax={(testDataMax.HasValue ? testDataMax.Value : -1)}");
+                        return false;
                     }
 
                     expectedValue++;
-                    if (testDataMax > 0 && expectedValue > testDataMax)
+                    if (testDataMax.HasValue && expectedValue == testDataMax.Value)
+                    {
                         expectedValue = 0;
-                }
+                    }
 
-                samplesProcessed += samples.Length;
+                    expectedNextValue = expectedValue;
+                    samplesProcessed++;
+                }
                 progress?.Report((double)samplesProcessed / totalSamples);
             }
 

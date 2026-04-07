@@ -84,7 +84,7 @@
 
                     <!-- Not connected warning -->
                     <InfoBar Grid.Row="2"
-                             IsOpen="{x:Bind ViewModel.IsDeviceConnected, Mode=OneWay, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                             IsOpen="{x:Bind ViewModel.IsDeviceDisconnected, Mode=OneWay}"
                              Severity="Warning"
                              Title="No device connected"
                              Message="Connect a Domesday Duplicator device to begin capturing."

@@ -45,6 +45,7 @@ public sealed class ConfigurationService : IConfigurationService
             Configuration.PreferredDevicePath = saved.PreferredDevicePath ?? string.Empty;
             Configuration.CaptureDirectory = saved.CaptureDirectory ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             Configuration.CaptureFormat = saved.CaptureFormat;
+            Configuration.IsTestMode = saved.IsTestMode;
             Configuration.DiskBufferQueueSize = saved.DiskBufferQueueSize;
             Configuration.UseSmallUsbTransfers = saved.UseSmallUsbTransfers;
             Configuration.UseWinUsb = saved.UseWinUsb;
@@ -52,6 +53,15 @@ public sealed class ConfigurationService : IConfigurationService
             Configuration.ShowAmplitudeLabel = saved.ShowAmplitudeLabel;
             Configuration.ShowAmplitudeChart = saved.ShowAmplitudeChart;
             Configuration.ShowAdvancedCaptureStats = saved.ShowAdvancedCaptureStats;
+            Configuration.ResetNotesOnSideChange = saved.ResetNotesOnSideChange;
+            Configuration.ResetMintMarksOnSideChange = saved.ResetMintMarksOnSideChange;
+            Configuration.DiscTitle = saved.DiscTitle ?? string.Empty;
+            Configuration.IsCav = saved.IsCav;
+            Configuration.IsNtsc = saved.IsNtsc;
+            Configuration.SideNumber = saved.SideNumber;
+            Configuration.AudioType = saved.AudioType ?? string.Empty;
+            Configuration.CaptureNotes = saved.CaptureNotes ?? string.Empty;
+            Configuration.MintMarks = saved.MintMarks ?? string.Empty;
         }
         catch
         {
@@ -73,13 +83,23 @@ public sealed class ConfigurationService : IConfigurationService
                 PreferredDevicePath = Configuration.PreferredDevicePath,
                 CaptureDirectory = Configuration.CaptureDirectory,
                 CaptureFormat = Configuration.CaptureFormat,
+                IsTestMode = Configuration.IsTestMode,
                 DiskBufferQueueSize = Configuration.DiskBufferQueueSize,
                 UseSmallUsbTransfers = Configuration.UseSmallUsbTransfers,
                 UseWinUsb = Configuration.UseWinUsb,
                 UseAsyncFileIo = Configuration.UseAsyncFileIo,
                 ShowAmplitudeLabel = Configuration.ShowAmplitudeLabel,
                 ShowAmplitudeChart = Configuration.ShowAmplitudeChart,
-                ShowAdvancedCaptureStats = Configuration.ShowAdvancedCaptureStats
+                ShowAdvancedCaptureStats = Configuration.ShowAdvancedCaptureStats,
+                ResetNotesOnSideChange = Configuration.ResetNotesOnSideChange,
+                ResetMintMarksOnSideChange = Configuration.ResetMintMarksOnSideChange,
+                DiscTitle = Configuration.DiscTitle,
+                IsCav = Configuration.IsCav,
+                IsNtsc = Configuration.IsNtsc,
+                SideNumber = Configuration.SideNumber,
+                AudioType = Configuration.AudioType,
+                CaptureNotes = Configuration.CaptureNotes,
+                MintMarks = Configuration.MintMarks
             };
 
             var json = JsonSerializer.Serialize(saved, JsonOptions);
@@ -99,6 +119,7 @@ public sealed class ConfigurationService : IConfigurationService
         Configuration.PreferredDevicePath = fresh.PreferredDevicePath;
         Configuration.CaptureDirectory = fresh.CaptureDirectory;
         Configuration.CaptureFormat = fresh.CaptureFormat;
+        Configuration.IsTestMode = fresh.IsTestMode;
         Configuration.DiskBufferQueueSize = fresh.DiskBufferQueueSize;
         Configuration.UseSmallUsbTransfers = fresh.UseSmallUsbTransfers;
         Configuration.UseWinUsb = fresh.UseWinUsb;
@@ -106,6 +127,15 @@ public sealed class ConfigurationService : IConfigurationService
         Configuration.ShowAmplitudeLabel = fresh.ShowAmplitudeLabel;
         Configuration.ShowAmplitudeChart = fresh.ShowAmplitudeChart;
         Configuration.ShowAdvancedCaptureStats = fresh.ShowAdvancedCaptureStats;
+        Configuration.ResetNotesOnSideChange = fresh.ResetNotesOnSideChange;
+        Configuration.ResetMintMarksOnSideChange = fresh.ResetMintMarksOnSideChange;
+        Configuration.DiscTitle = fresh.DiscTitle;
+        Configuration.IsCav = fresh.IsCav;
+        Configuration.IsNtsc = fresh.IsNtsc;
+        Configuration.SideNumber = fresh.SideNumber;
+        Configuration.AudioType = fresh.AudioType;
+        Configuration.CaptureNotes = fresh.CaptureNotes;
+        Configuration.MintMarks = fresh.MintMarks;
         Save();
     }
 
@@ -116,6 +146,7 @@ public sealed class ConfigurationService : IConfigurationService
         public string? PreferredDevicePath { get; set; }
         public string? CaptureDirectory { get; set; }
         public CaptureFormat CaptureFormat { get; set; }
+        public bool IsTestMode { get; set; }
         public long DiskBufferQueueSize { get; set; }
         public bool UseSmallUsbTransfers { get; set; }
         public bool UseWinUsb { get; set; }
@@ -123,5 +154,14 @@ public sealed class ConfigurationService : IConfigurationService
         public bool ShowAmplitudeLabel { get; set; }
         public bool ShowAmplitudeChart { get; set; }
         public bool ShowAdvancedCaptureStats { get; set; }
+        public bool ResetNotesOnSideChange { get; set; }
+        public bool ResetMintMarksOnSideChange { get; set; }
+        public string? DiscTitle { get; set; }
+        public bool IsCav { get; set; } = true;
+        public bool IsNtsc { get; set; } = true;
+        public int SideNumber { get; set; } = 1;
+        public string? AudioType { get; set; }
+        public string? CaptureNotes { get; set; }
+        public string? MintMarks { get; set; }
     }
 }

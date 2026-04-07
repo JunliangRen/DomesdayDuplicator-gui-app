@@ -18,6 +18,7 @@ public sealed class NativeBuffer : IDisposable
 {
     private nint _pointer;
     private readonly nuint _size;
+    private int _length;
     private bool _disposed;
     private bool _locked;
 
@@ -26,6 +27,19 @@ public sealed class NativeBuffer : IDisposable
 
     /// <summary>Size of the buffer in bytes.</summary>
     public int Size => (int)_size;
+
+    /// <summary>Number of valid bytes currently stored in the buffer.</summary>
+    public int Length
+    {
+        get => _length;
+        set
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(value, Size);
+            _length = value;
+        }
+    }
 
     public NativeBuffer(int sizeInBytes)
     {
@@ -58,6 +72,14 @@ public sealed class NativeBuffer : IDisposable
         return new Span<byte>((void*)_pointer, (int)_size);
     }
 
+    public unsafe Span<byte> AsSpan(int length)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, Size);
+        return new Span<byte>((void*)_pointer, length);
+    }
+
     /// <summary>
     /// Get a ReadOnlySpan&lt;byte&gt; view of the native buffer (zero-copy).
     /// </summary>
@@ -65,6 +87,14 @@ public sealed class NativeBuffer : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         return new ReadOnlySpan<byte>((void*)_pointer, (int)_size);
+    }
+
+    public unsafe ReadOnlySpan<byte> AsReadOnlySpan(int length)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, Size);
+        return new ReadOnlySpan<byte>((void*)_pointer, length);
     }
 
     /// <summary>
@@ -153,7 +183,13 @@ public sealed class NativeBufferPool : IDisposable
     public NativeBuffer? Rent()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        return _freeBuffers.TryDequeue(out var buffer) ? buffer : null;
+        if (!_freeBuffers.TryDequeue(out var buffer))
+        {
+            return null;
+        }
+
+        buffer.Length = 0;
+        return buffer;
     }
 
     /// <summary>
@@ -162,6 +198,7 @@ public sealed class NativeBufferPool : IDisposable
     public void Return(NativeBuffer buffer)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        buffer.Length = 0;
         _freeBuffers.Enqueue(buffer);
     }
 

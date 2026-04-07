@@ -32,12 +32,12 @@ public sealed partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private CaptureStatistics _statistics = new();
 
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _statusTimer;
+    private bool _isScanningForDevice;
 
     public DashboardViewModel()
     {
         _usb = ServiceLocator.UsbCapture;
         _config = ServiceLocator.Configuration;
-        _usb.DeviceConnectionChanged += OnDeviceConnectionChanged;
     }
 
     /// <summary>
@@ -45,6 +45,11 @@ public sealed partial class DashboardViewModel : ObservableObject
     /// </summary>
     public void Initialize(Microsoft.UI.Dispatching.DispatcherQueue dispatcher)
     {
+        Uninitialize();
+
+        _usb.DeviceConnectionChanged -= OnDeviceConnectionChanged;
+        _usb.DeviceConnectionChanged += OnDeviceConnectionChanged;
+
         _statusTimer = dispatcher.CreateTimer();
         _statusTimer.Interval = TimeSpan.FromMilliseconds(200);
         _statusTimer.Tick += OnStatusTimerTick;
@@ -56,7 +61,14 @@ public sealed partial class DashboardViewModel : ObservableObject
 
     public void Uninitialize()
     {
-        _statusTimer?.Stop();
+        if (_statusTimer != null)
+        {
+            _statusTimer.Tick -= OnStatusTimerTick;
+            _statusTimer.Stop();
+            _statusTimer = null;
+        }
+
+        _usb.DeviceConnectionChanged -= OnDeviceConnectionChanged;
     }
 
     private void OnStatusTimerTick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
@@ -94,6 +106,12 @@ public sealed partial class DashboardViewModel : ObservableObject
     [RelayCommand]
     private void TryScanForDevice()
     {
+        if (_isScanningForDevice || _usb.IsDeviceConnected)
+        {
+            return;
+        }
+
+        _isScanningForDevice = true;
         try
         {
             var config = _config.Configuration;
@@ -115,6 +133,10 @@ public sealed partial class DashboardViewModel : ObservableObject
         {
             // Native interop failure — device scanning unavailable
             DeviceStatusText = "Device scan failed";
+        }
+        finally
+        {
+            _isScanningForDevice = false;
         }
     }
 
@@ -149,6 +171,16 @@ public sealed partial class DashboardViewModel : ObservableObject
     private void OnDeviceConnectionChanged(object? sender, bool connected)
     {
         IsDeviceConnected = connected;
-        RefreshDeviceStatus();
+
+        if (connected && _usb.ConnectedDevice != null)
+        {
+            DeviceStatusText = "Device connected";
+            DeviceDescription = _usb.ConnectedDevice.Description;
+        }
+        else
+        {
+            DeviceStatusText = "No device connected";
+            DeviceDescription = string.Empty;
+        }
     }
 }

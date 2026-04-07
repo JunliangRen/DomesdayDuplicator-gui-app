@@ -39,9 +39,6 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
-        // Prevent crash from unhandled exceptions (including native/SEH)
-        // so the user gets a chance to see the error instead of a silent crash.
-        e.Handled = true;
         Debug.WriteLine($"[Unhandled Exception] {e.Exception}");
     }
 
@@ -68,6 +65,19 @@ public partial class App : Application
         // ── Create main window ──────────────────────────────────
         _window = new MainWindow();
         MainWindow = _window;
+        _window.Closed += OnMainWindowClosed;
         _window.Activate();
+    }
+
+    private void OnMainWindowClosed(object sender, WindowEventArgs args)
+    {
+        if (_window != null)
+        {
+            _window.Closed -= OnMainWindowClosed;
+            _window = null;
+        }
+
+        MainWindow = null;
+        _ = ServiceLocator.DisposeRegisteredServicesAsync();
     }
 }

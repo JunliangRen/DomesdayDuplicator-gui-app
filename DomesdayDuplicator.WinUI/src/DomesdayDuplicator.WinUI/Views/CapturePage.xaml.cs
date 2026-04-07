@@ -14,6 +14,7 @@ public sealed partial class CapturePage : Page
     public CapturePage()
     {
         InitializeComponent();
+        Unloaded += OnPageUnloaded;
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -25,6 +26,11 @@ public sealed partial class CapturePage : Page
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
+        ViewModel.Uninitialize();
+    }
+
+    private void OnPageUnloaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
         ViewModel.Uninitialize();
     }
 }

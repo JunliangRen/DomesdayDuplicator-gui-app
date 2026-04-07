@@ -23,7 +23,7 @@ namespace DomesdayDuplicator.WinUI.Native;
 /// <summary>
 /// High-performance USB capture engine using NativeMemory and WinUSB.
 /// </summary>
-public sealed class NativeCaptureEngine : IDisposable
+public sealed class NativeCaptureEngine : IDisposable, IAsyncDisposable
 {
     // ── Constants matching original C++ firmware ─────────────────
     private const int SmallTransferSize = 128 * 1024;        // 128 KB
@@ -38,6 +38,9 @@ public sealed class NativeCaptureEngine : IDisposable
 
     // ── State ───────────────────────────────────────────────────
     private NativeBufferPool? _bufferPool;
+    private string? _devicePath;
+    private ushort _deviceVendorId;
+    private ushort _deviceProductId;
     private nint _deviceHandle = INVALID_HANDLE_VALUE;
     private nint _winUsbHandle;
     private byte _bulkInPipeId;
@@ -142,6 +145,16 @@ public sealed class NativeCaptureEngine : IDisposable
         return devices;
     }
 
+    private bool TrySendConfigurationCommandOnCurrentHandle(WINUSB_SETUP_PACKET setup)
+    {
+        if (_winUsbHandle == nint.Zero)
+        {
+            return false;
+        }
+
+        return WinUsb_ControlTransfer(_winUsbHandle, setup, nint.Zero, 0, out _, nint.Zero);
+    }
+
     /// <summary>
     /// Open a WinUSB device and validate it matches the expected VID/PID.
     /// Returns null if the device cannot be opened or any native call fails.
@@ -233,6 +246,10 @@ public sealed class NativeCaptureEngine : IDisposable
         uint speedLen = 4;
         WinUsb_QueryDeviceInformation(_winUsbHandle, DEVICE_SPEED, ref speedLen, out uint speed);
 
+        _devicePath = devicePath;
+        _deviceVendorId = desc.idVendor;
+        _deviceProductId = desc.idProduct;
+
         return new DeviceInfo(
             devicePath, desc.idVendor, desc.idProduct,
             $"Domesday Duplicator ({desc.idVendor:X4}:{desc.idProduct:X4})",
@@ -244,8 +261,6 @@ public sealed class NativeCaptureEngine : IDisposable
     /// </summary>
     public bool SendConfigurationCommand(bool testMode)
     {
-        if (_winUsbHandle == nint.Zero) return false;
-
         var setup = new WINUSB_SETUP_PACKET
         {
             RequestType = ConfigRequestType,
@@ -255,7 +270,60 @@ public sealed class NativeCaptureEngine : IDisposable
             Length = 0
         };
 
-        return WinUsb_ControlTransfer(_winUsbHandle, setup, nint.Zero, 0, out _, nint.Zero);
+        bool temporaryHandleSucceeded = TrySendConfigurationCommandOnTemporaryHandle(_devicePath, setup);
+        bool currentHandleSucceeded = false;
+
+        if (!temporaryHandleSucceeded && _winUsbHandle != nint.Zero)
+        {
+            currentHandleSucceeded = WinUsb_ControlTransfer(_winUsbHandle, setup, nint.Zero, 0, out _, nint.Zero);
+        }
+
+        Debug.WriteLine($"[SendConfigurationCommand] testMode={testMode}, temporaryHandleSucceeded={temporaryHandleSucceeded}, currentHandleSucceeded={currentHandleSucceeded}, devicePath={_devicePath}");
+        return temporaryHandleSucceeded || currentHandleSucceeded;
+    }
+
+    private bool TrySendConfigurationCommandOnTemporaryHandle(string? devicePath, WINUSB_SETUP_PACKET setup)
+    {
+        if (string.IsNullOrWhiteSpace(devicePath)) return false;
+
+        nint deviceHandle = INVALID_HANDLE_VALUE;
+        nint winUsbHandle = nint.Zero;
+
+        try
+        {
+            deviceHandle = CreateFileW(
+                devicePath,
+                GENERIC_READ | GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                nint.Zero,
+                OPEN_EXISTING,
+                (uint)FILE_FLAG_OVERLAPPED,
+                nint.Zero);
+
+            if (deviceHandle == INVALID_HANDLE_VALUE)
+            {
+                return false;
+            }
+
+            if (!WinUsb_Initialize(deviceHandle, out winUsbHandle))
+            {
+                return false;
+            }
+
+            return WinUsb_ControlTransfer(winUsbHandle, setup, nint.Zero, 0, out _, nint.Zero);
+        }
+        finally
+        {
+            if (winUsbHandle != nint.Zero)
+            {
+                WinUsb_Free(winUsbHandle);
+            }
+
+            if (deviceHandle != INVALID_HANDLE_VALUE)
+            {
+                CloseHandle(deviceHandle);
+            }
+        }
     }
 
     /// <summary>
@@ -271,6 +339,43 @@ public sealed class NativeCaptureEngine : IDisposable
     {
         if (_isCapturing || _winUsbHandle == nint.Zero) return false;
 
+        string? devicePath = _devicePath;
+        ushort deviceVendorId = _deviceVendorId;
+        ushort deviceProductId = _deviceProductId;
+
+        CloseDevice();
+
+        var setup = new WINUSB_SETUP_PACKET
+        {
+            RequestType = ConfigRequestType,
+            Request = ConfigRequest,
+            Value = (ushort)(testMode ? 1 : 0),
+            Index = 0,
+            Length = 0
+        };
+
+        bool temporaryHandleSucceeded = TrySendConfigurationCommandOnTemporaryHandle(devicePath, setup);
+        Debug.WriteLine($"[StartCapture] Pre-connect configuration testMode={testMode}, temporaryHandleSucceeded={temporaryHandleSucceeded}, devicePath={devicePath}");
+        if (!temporaryHandleSucceeded)
+        {
+            Debug.WriteLine($"[StartCapture] Failed to apply test mode setting: {testMode}");
+        }
+
+        if (string.IsNullOrWhiteSpace(devicePath) || OpenDeviceCore(devicePath, deviceVendorId, deviceProductId) == null)
+        {
+            _result = TransferResult.ConnectionFailure;
+            return false;
+        }
+
+        bool currentHandleSucceeded = TrySendConfigurationCommandOnCurrentHandle(setup);
+        Debug.WriteLine($"[StartCapture] Post-connect configuration testMode={testMode}, currentHandleSucceeded={currentHandleSucceeded}, devicePath={_devicePath}");
+        if (!currentHandleSucceeded)
+        {
+            Debug.WriteLine($"[StartCapture] Failed to re-apply test mode on capture handle: {testMode}");
+        }
+
+        Thread.Sleep(50);
+
         // Reset statistics
         _totalTransfers = 0;
         _diskBuffersWritten = 0;
@@ -284,7 +389,12 @@ public sealed class NativeCaptureEngine : IDisposable
         _hasSequenceNumbers = false;
 
         // Determine transfer size
-        int transferSize = useSmallTransfers ? SmallTransferSize : (int)Math.Min(_maxTransferSize, DefaultDiskBufferSize);
+        bool useLargeTransfersForThisCapture = testMode || !useSmallTransfers;
+        int transferSize = useLargeTransfersForThisCapture
+            ? (int)Math.Min(_maxTransferSize, DefaultDiskBufferSize)
+            : SmallTransferSize;
+
+        Debug.WriteLine($"[StartCapture] transferSize={transferSize}, requestedSmallTransfers={useSmallTransfers}, effectiveLargeTransfers={useLargeTransfersForThisCapture}");
 
         // Allocate native buffer pool
         _bufferPool?.Dispose();
@@ -299,9 +409,6 @@ public sealed class NativeCaptureEngine : IDisposable
         };
         _usbToProcessing = Channel.CreateBounded<NativeBuffer>(channelOpts);
         _processingToDisk = Channel.CreateBounded<NativeBuffer>(channelOpts);
-
-        // Send FPGA configuration
-        SendConfigurationCommand(testMode);
 
         // Boost process priority
         SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
@@ -370,6 +477,55 @@ public sealed class NativeCaptureEngine : IDisposable
         if (_result == TransferResult.Running) _result = TransferResult.Success;
     }
 
+    private sealed class UsbTransferSlot
+    {
+        public nint EventHandle;
+        public NativeBuffer? Buffer;
+        public WinUsbInterop.NativeOverlapped Overlapped;
+        public bool Submitted;
+        public bool Completed;
+        public uint CompletedBytes;
+        public long SequenceId;
+    }
+
+    private bool SubmitUsbRead(UsbTransferSlot slot, nint winUsbHandle, byte pipeId, long sequenceId)
+    {
+        if (slot.Buffer == null)
+        {
+            return false;
+        }
+
+        ResetEvent(slot.EventHandle);
+        slot.Overlapped = new WinUsbInterop.NativeOverlapped { EventHandle = slot.EventHandle };
+        slot.SequenceId = sequenceId;
+        slot.Completed = false;
+        slot.CompletedBytes = 0;
+
+        bool success = WinUsb_ReadPipe(
+            winUsbHandle,
+            pipeId,
+            slot.Buffer.Pointer,
+            (uint)slot.Buffer.Size,
+            out _,
+            ref slot.Overlapped);
+
+        if (success)
+        {
+            slot.Submitted = true;
+            return true;
+        }
+
+        int error = Marshal.GetLastWin32Error();
+        if (error == ERROR_IO_PENDING)
+        {
+            slot.Submitted = true;
+            return true;
+        }
+
+        slot.Submitted = false;
+        return false;
+    }
+
     // ═════════════════════════════════════════════════════════════
     // Thread 1: USB Transfer Loop
     // Reads raw data from the device into NativeBuffers.
@@ -379,88 +535,202 @@ public sealed class NativeCaptureEngine : IDisposable
     {
         Thread.CurrentThread.Priority = ThreadPriority.Highest;
 
-        while (!ct.IsCancellationRequested)
+        const int SimultaneousTransfers = 4;
+        const int InitialTransfersToSkip = 4;
+        var slots = new UsbTransferSlot[SimultaneousTransfers];
+
+        try
         {
-            var buffer = _bufferPool!.Rent();
-            if (buffer == null)
+            for (int i = 0; i < slots.Length; i++)
             {
-                _result = TransferResult.BufferUnderflow;
-                break;
-            }
-
-            // Create manual-reset event for overlapped I/O
-            var hEvent = CreateEventW(nint.Zero, true, false, nint.Zero);
-            if (hEvent == nint.Zero)
-            {
-                _bufferPool.Return(buffer);
-                _result = TransferResult.UsbTransferFailure;
-                break;
-            }
-
-            try
-            {
-                var overlapped = new WinUsbInterop.NativeOverlapped { EventHandle = hEvent };
-
-                bool success = WinUsb_ReadPipe(
-                    winUsbHandle, pipeId,
-                    buffer.Pointer, (uint)buffer.Size,
-                    out uint bytesRead, ref overlapped);
-
-                if (!success)
+                var buffer = _bufferPool!.Rent();
+                if (buffer == null)
                 {
-                    int error = Marshal.GetLastWin32Error();
-                    if (error == ERROR_IO_PENDING)
-                    {
-                        // Wait for the transfer to complete
-                        var handles = new nint[] { hEvent };
-                        uint waitResult = WaitForMultipleObjects(1, handles, false, 5000);
-                        if (waitResult != 0) // WAIT_OBJECT_0
-                        {
-                            if (ct.IsCancellationRequested) break;
-                            _bufferPool.Return(buffer);
-                            _result = TransferResult.UsbTransferFailure;
-                            break;
-                        }
+                    _result = TransferResult.BufferUnderflow;
+                    return;
+                }
 
-                        if (!GetOverlappedResult(_deviceHandle, ref overlapped, out bytesRead, false))
+                var hEvent = CreateEventW(nint.Zero, true, false, nint.Zero);
+                if (hEvent == nint.Zero)
+                {
+                    _bufferPool.Return(buffer);
+                    _result = TransferResult.UsbTransferFailure;
+                    return;
+                }
+
+                var slot = new UsbTransferSlot
+                {
+                    EventHandle = hEvent,
+                    Buffer = buffer
+                };
+
+                if (!SubmitUsbRead(slot, winUsbHandle, pipeId, i))
+                {
+                    _bufferPool.Return(buffer);
+                    CloseHandle(hEvent);
+                    _result = TransferResult.ConnectionFailure;
+                    return;
+                }
+
+                slots[i] = slot;
+            }
+
+            long nextCompletionSequence = 0;
+            long nextSubmissionSequence = slots.Length;
+            int skippedInitialTransfers = 0;
+
+            while (!ct.IsCancellationRequested)
+            {
+                var activeSlots = new List<int>(slots.Length);
+                var handles = new List<nint>(slots.Length);
+
+                for (int i = 0; i < slots.Length; i++)
+                {
+                    if (slots[i].Submitted)
+                    {
+                        activeSlots.Add(i);
+                        handles.Add(slots[i].EventHandle);
+                    }
+                }
+
+                if (handles.Count == 0)
+                {
+                    break;
+                }
+
+                uint waitResult = WaitForMultipleObjects((uint)handles.Count, handles.ToArray(), false, 5000);
+                if (waitResult >= handles.Count)
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    _result = TransferResult.UsbTransferFailure;
+                    break;
+                }
+
+                int slotIndex = activeSlots[(int)waitResult];
+                var slot = slots[slotIndex];
+
+                if (!GetOverlappedResult(_deviceHandle, ref slot.Overlapped, out uint bytesRead, false))
+                {
+                    if (ct.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    _result = TransferResult.UsbTransferFailure;
+                    break;
+                }
+
+                slot.Submitted = false;
+                slot.Completed = true;
+                slot.CompletedBytes = bytesRead;
+                slots[slotIndex] = slot;
+
+                while (true)
+                {
+                    UsbTransferSlot? readySlot = null;
+                    int readyIndex = -1;
+
+                    for (int i = 0; i < slots.Length; i++)
+                    {
+                        if (slots[i].Completed && slots[i].SequenceId == nextCompletionSequence)
                         {
-                            _bufferPool.Return(buffer);
-                            if (ct.IsCancellationRequested) break;
-                            _result = TransferResult.UsbTransferFailure;
+                            readySlot = slots[i];
+                            readyIndex = i;
                             break;
                         }
                     }
-                    else
+
+                    if (readySlot == null)
                     {
-                        _bufferPool.Return(buffer);
+                        break;
+                    }
+
+                    Interlocked.Increment(ref _totalTransfers);
+
+                    var completedBuffer = readySlot.Buffer;
+                    readySlot.Buffer = null;
+                    readySlot.Completed = false;
+
+                    if (completedBuffer != null)
+                    {
+                        int validBytes = (int)(readySlot.CompletedBytes & ~1U);
+                        if (validBytes > 0)
+                        {
+                            completedBuffer.Length = validBytes;
+
+                            if (skippedInitialTransfers < InitialTransfersToSkip)
+                            {
+                                skippedInitialTransfers++;
+                                Debug.WriteLine($"[UsbTransferLoop] Skipping warm-up transfer {skippedInitialTransfers}/{InitialTransfersToSkip}, bytes={validBytes}, sequenceId={readySlot.SequenceId}");
+                                _bufferPool!.Return(completedBuffer);
+                            }
+                            else if (!_usbToProcessing!.Writer.TryWrite(completedBuffer))
+                            {
+                                _usbToProcessing.Writer.WriteAsync(completedBuffer, ct).AsTask().Wait(ct);
+                            }
+                        }
+                        else
+                        {
+                            _bufferPool!.Return(completedBuffer);
+                        }
+                    }
+
+                    var nextBuffer = _bufferPool!.Rent();
+                    if (nextBuffer == null)
+                    {
+                        _result = TransferResult.BufferUnderflow;
+                        break;
+                    }
+
+                    readySlot.Buffer = nextBuffer;
+                    if (!SubmitUsbRead(readySlot, winUsbHandle, pipeId, nextSubmissionSequence++))
+                    {
+                        _bufferPool.Return(nextBuffer);
+                        readySlot.Buffer = null;
                         _result = TransferResult.ConnectionFailure;
                         break;
                     }
+
+                    slots[readyIndex] = readySlot;
+                    nextCompletionSequence++;
                 }
-
-                Interlocked.Increment(ref _totalTransfers);
-
-                // Pass filled buffer to processing thread (zero-copy)
-                if (!_usbToProcessing!.Writer.TryWrite(buffer))
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch
+        {
+            _result = TransferResult.UsbTransferFailure;
+        }
+        finally
+        {
+            foreach (var slot in slots)
+            {
+                if (slot == null)
                 {
-                    // Channel full — wait
-                    _usbToProcessing.Writer.WriteAsync(buffer, ct).AsTask().Wait(ct);
+                    continue;
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                _bufferPool.Return(buffer);
-                break;
-            }
-            catch
-            {
-                _bufferPool.Return(buffer);
-                _result = TransferResult.UsbTransferFailure;
-                break;
-            }
-            finally
-            {
-                CloseHandle(hEvent);
+
+                if (slot.Buffer != null)
+                {
+                    try
+                    {
+                        _bufferPool?.Return(slot.Buffer);
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                if (slot.EventHandle != nint.Zero)
+                {
+                    CloseHandle(slot.EventHandle);
+                }
             }
         }
 
@@ -477,9 +747,11 @@ public sealed class NativeCaptureEngine : IDisposable
         Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
 
         int expectedSequence = -1;
-        int testDataValue = 0;
-        int testDataMax = 0;
-        bool firstTestBuffer = true;
+        int? expectedNextTestDataValue = null;
+        int? testDataMax = null;
+        bool loggedInitialTestModeSamples = false;
+        bool loggedTestModeMismatch = false;
+        long testModeSampleIndex = 0;
 
         try
         {
@@ -489,15 +761,15 @@ public sealed class NativeCaptureEngine : IDisposable
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    var span = buffer.AsSpan();
+                    var span = buffer.AsSpan(buffer.Length);
                     int sampleCount = span.Length / 2;
-
                     // Per-buffer statistics
                     int localMin = int.MaxValue;
                     int localMax = int.MinValue;
                     long localClipMin = 0;
                     long localClipMax = 0;
                     double sumSquares = 0;
+                    List<int>? initialSamples = testMode && !loggedInitialTestModeSamples ? [] : null;
 
                     for (int i = 0; i < span.Length - 1; i += 2)
                     {
@@ -511,9 +783,9 @@ public sealed class NativeCaptureEngine : IDisposable
                         // Strip sequence number, keep 10-bit sample
                         int sample10 = raw & SampleDataMask;
 
-                        if (expectedSequence >= 0 && seq != expectedSequence && !_hasSequenceNumbers)
+                        if (initialSamples != null && initialSamples.Count < 16)
                         {
-                            _hasSequenceNumbers = true;
+                            initialSamples.Add(sample10);
                         }
 
                         if (i == 0 && expectedSequence < 0)
@@ -524,39 +796,60 @@ public sealed class NativeCaptureEngine : IDisposable
                         // Validate sequence (checked every Nth sample in original code)
                         if (i % (65536 * 2) == 0)
                         {
-                            if (expectedSequence >= 0 && seq != expectedSequence)
+                            if (expectedSequence >= 0)
                             {
-                                _result = TransferResult.SequenceMismatch;
+                                int nextExpectedSequence = (expectedSequence + 1) & SequenceCounterMax;
+
+                                if (_hasSequenceNumbers)
+                                {
+                                    if (seq != nextExpectedSequence)
+                                    {
+                                        _result = TransferResult.SequenceMismatch;
+                                    }
+                                }
+                                else if (seq == nextExpectedSequence)
+                                {
+                                    _hasSequenceNumbers = true;
+                                }
                             }
-                            expectedSequence = (seq + 1) & SequenceCounterMax;
+
+                            expectedSequence = seq;
                         }
 
                         // Test mode verification
                         if (testMode)
                         {
-                            if (firstTestBuffer && i == 0)
+                            int expectedValue = expectedNextTestDataValue ?? sample10;
+
+                            if (!testDataMax.HasValue &&
+                                expectedValue != sample10 &&
+                                sample10 == 0 &&
+                                (expectedValue == 1021 || expectedValue == 1024))
                             {
-                                testDataValue = sample10;
-                                firstTestBuffer = false;
-                            }
-                            else
-                            {
-                                if (sample10 != testDataValue)
-                                {
-                                    if (testDataMax == 0 && sample10 == 0)
-                                    {
-                                        testDataMax = testDataValue;
-                                    }
-                                    else
-                                    {
-                                        _result = TransferResult.VerificationError;
-                                    }
-                                }
+                                testDataMax = expectedValue;
+                                expectedNextTestDataValue = 1;
+                                continue;
                             }
 
-                            testDataValue++;
-                            if (testDataMax > 0 && testDataValue > testDataMax)
-                                testDataValue = 0;
+                            if (expectedValue != sample10)
+                            {
+                                if (!loggedTestModeMismatch)
+                                {
+                                    Debug.WriteLine($"[ProcessingLoop] Test-mode mismatch at sample {testModeSampleIndex}: expected {expectedValue}, actual {sample10}, testDataMax={(testDataMax.HasValue ? testDataMax.Value : -1)}");
+                                    loggedTestModeMismatch = true;
+                                }
+
+                                _result = TransferResult.VerificationError;
+                            }
+
+                            expectedValue++;
+                            if (testDataMax.HasValue && expectedValue == testDataMax.Value)
+                            {
+                                expectedValue = 0;
+                            }
+
+                            expectedNextTestDataValue = expectedValue;
+                            testModeSampleIndex++;
                         }
 
                         // Statistics
@@ -578,12 +871,29 @@ public sealed class NativeCaptureEngine : IDisposable
                                 break;
 
                             case CaptureFormat.Unsigned10Bit:
-                            case CaptureFormat.Unsigned10BitDecimated:
-                                // Keep as-is for 10-bit; packing happens at write
-                                span[i] = (byte)(sample10 & 0xFF);
-                                span[i + 1] = (byte)((sample10 >> 8) & 0xFF);
+                            span[i] = (byte)(sample10 & 0xFF);
+                            span[i + 1] = (byte)((sample10 >> 8) & 0xFF);
+                            break;
+
+                        case CaptureFormat.Unsigned10BitDecimated:
+                            span[i] = (byte)(sample10 & 0xFF);
+                            span[i + 1] = (byte)((sample10 >> 8) & 0xFF);
                                 break;
                         }
+                    }
+
+                    int outputLength = format switch
+                    {
+                        CaptureFormat.Unsigned10Bit => PackUnsigned10BitInPlace(span),
+                        CaptureFormat.Unsigned10BitDecimated => PackUnsigned10Bit4To1DecimationInPlace(span),
+                        _ => span.Length
+                    };
+                    buffer.Length = outputLength;
+
+                    if (initialSamples != null)
+                    {
+                        Debug.WriteLine($"[ProcessingLoop] Initial test-mode samples: {string.Join(',', initialSamples)}");
+                        loggedInitialTestModeSamples = true;
                     }
 
                     // Update global statistics atomically
@@ -635,7 +945,7 @@ public sealed class NativeCaptureEngine : IDisposable
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    var data = buffer.AsReadOnlySpan();
+                    var data = buffer.AsReadOnlySpan(buffer.Length);
                     fs.Write(data);
 
                     Interlocked.Add(ref _fileSizeBytes, data.Length);
@@ -675,6 +985,56 @@ public sealed class NativeCaptureEngine : IDisposable
         while (value > current && Interlocked.CompareExchange(ref target, value, current) != current);
     }
 
+    private static int PackUnsigned10BitInPlace(Span<byte> span)
+    {
+        int groupCount = span.Length / 8;
+        var packed = new byte[groupCount * 5];
+        int writeIndex = 0;
+
+        for (int groupIndex = 0; groupIndex < groupCount; groupIndex++)
+        {
+            int readIndex = groupIndex * 8;
+            ushort word0 = (ushort)(span[readIndex] | (span[readIndex + 1] << 8));
+            ushort word1 = (ushort)(span[readIndex + 2] | (span[readIndex + 3] << 8));
+            ushort word2 = (ushort)(span[readIndex + 4] | (span[readIndex + 5] << 8));
+            ushort word3 = (ushort)(span[readIndex + 6] | (span[readIndex + 7] << 8));
+
+            packed[writeIndex++] = (byte)((word0 & 0x03FC) >> 2);
+            packed[writeIndex++] = (byte)(((word0 & 0x0003) << 6) | ((word1 & 0x03F0) >> 4));
+            packed[writeIndex++] = (byte)(((word1 & 0x000F) << 4) | ((word2 & 0x03C0) >> 6));
+            packed[writeIndex++] = (byte)(((word2 & 0x003F) << 2) | ((word3 & 0x0300) >> 8));
+            packed[writeIndex++] = (byte)(word3 & 0x00FF);
+        }
+
+        packed.CopyTo(span);
+        return packed.Length;
+    }
+
+    private static int PackUnsigned10Bit4To1DecimationInPlace(Span<byte> span)
+    {
+        int groupCount = span.Length / 32;
+        var packed = new byte[groupCount * 5];
+        int writeIndex = 0;
+
+        for (int groupIndex = 0; groupIndex < groupCount; groupIndex++)
+        {
+            int readIndex = groupIndex * 32;
+            ushort word0 = (ushort)(span[readIndex] | (span[readIndex + 1] << 8));
+            ushort word1 = (ushort)(span[readIndex + 6] | (span[readIndex + 7] << 8));
+            ushort word2 = (ushort)(span[readIndex + 12] | (span[readIndex + 13] << 8));
+            ushort word3 = (ushort)(span[readIndex + 18] | (span[readIndex + 19] << 8));
+
+            packed[writeIndex++] = (byte)((word0 & 0x03FC) >> 2);
+            packed[writeIndex++] = (byte)(((word0 & 0x0003) << 6) | ((word1 & 0x03F0) >> 4));
+            packed[writeIndex++] = (byte)(((word1 & 0x000F) << 4) | ((word2 & 0x03C0) >> 6));
+            packed[writeIndex++] = (byte)(((word2 & 0x003F) << 2) | ((word3 & 0x0300) >> 8));
+            packed[writeIndex++] = (byte)(word3 & 0x00FF);
+        }
+
+        packed.CopyTo(span);
+        return packed.Length;
+    }
+
     public void CloseDevice()
     {
         try
@@ -704,17 +1064,33 @@ public sealed class NativeCaptureEngine : IDisposable
             Debug.WriteLine($"[CloseDevice] CloseHandle failed: {ex.Message}");
             _deviceHandle = INVALID_HANDLE_VALUE;
         }
+
+        _devicePath = null;
+        _deviceVendorId = 0;
+        _deviceProductId = 0;
     }
 
     public void Dispose()
+        => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    public async ValueTask DisposeAsync()
     {
         if (_isCapturing)
         {
             _cts?.Cancel();
-            StopCaptureAsync().Wait(TimeSpan.FromSeconds(5));
+            try
+            {
+                await StopCaptureAsync().WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+            }
         }
+
         _cts?.Dispose();
+        _cts = null;
         _bufferPool?.Dispose();
+        _bufferPool = null;
         CloseDevice();
     }
 }

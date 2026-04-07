@@ -37,6 +37,9 @@ public interface IUsbCaptureService : IDisposable
     /// <summary>Stop the current capture session.</summary>
     Task StopCaptureAsync();
 
+    /// <summary>Apply the FPGA test mode setting to the connected device.</summary>
+    bool SetTestMode(bool testMode);
+
     /// <summary>Read the latest capture statistics.</summary>
     void ReadStatistics(CaptureStatistics stats);
 
@@ -47,7 +50,7 @@ public interface IUsbCaptureService : IDisposable
 /// <summary>
 /// Default implementation using <see cref="NativeCaptureEngine"/>.
 /// </summary>
-public sealed class UsbCaptureService : IUsbCaptureService
+public sealed class UsbCaptureService : IUsbCaptureService, IAsyncDisposable
 {
     private readonly NativeCaptureEngine _engine = new();
     private DeviceInfo? _device;
@@ -62,14 +65,30 @@ public sealed class UsbCaptureService : IUsbCaptureService
 
     public DeviceInfo? Connect(string devicePath, ushort vid, ushort pid)
     {
-        _device = _engine.OpenDevice(devicePath, vid, pid);
-        DeviceConnectionChanged?.Invoke(this, _device != null);
+        var device = _engine.OpenDevice(devicePath, vid, pid);
+        if (device == null)
+        {
+            return null;
+        }
+
+        var wasConnected = _device != null;
+        _device = device;
+
+        if (!wasConnected)
+        {
+            DeviceConnectionChanged?.Invoke(this, true);
+        }
+
         return _device;
     }
 
     public void Disconnect()
     {
-        if (IsCapturing) StopCaptureAsync().Wait();
+        if (IsCapturing)
+        {
+            StopCaptureAsync().GetAwaiter().GetResult();
+        }
+
         _engine.CloseDevice();
         _device = null;
         DeviceConnectionChanged?.Invoke(this, false);
@@ -81,7 +100,11 @@ public sealed class UsbCaptureService : IUsbCaptureService
 
     public Task StopCaptureAsync() => _engine.StopCaptureAsync();
 
+    public bool SetTestMode(bool testMode) => _engine.SendConfigurationCommand(testMode);
+
     public void ReadStatistics(CaptureStatistics stats) => _engine.ReadStatistics(stats);
 
     public void Dispose() => _engine.Dispose();
+
+    public ValueTask DisposeAsync() => _engine.DisposeAsync();
 }

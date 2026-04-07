@@ -25,12 +25,11 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Image Grid.Column="0" Width="20" Height="20"
-                   HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Image.Source>
-                    <BitmapImage UriSource="ms-appx:///Assets/app-icon.png" />
-                </Image.Source>
-            </Image>
+            <FontIcon Grid.Column="0"
+                      Glyph="&#xE7F4;"
+                      FontSize="18"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center" />
 
             <TextBlock Grid.Column="1"
                        Text="Domesday Duplicator"
@@ -44,9 +43,10 @@
             x:Name="NavView"
             Grid.Row="1"
             IsBackButtonVisible="Collapsed"
+            IsPaneOpen="False"
             IsPaneToggleButtonVisible="True"
             IsSettingsVisible="False"
-            PaneDisplayMode="Left"
+            PaneDisplayMode="LeftCompact"
             OpenPaneLength="280"
             SelectionChanged="NavView_SelectionChanged"
             Loaded="NavView_Loaded">
