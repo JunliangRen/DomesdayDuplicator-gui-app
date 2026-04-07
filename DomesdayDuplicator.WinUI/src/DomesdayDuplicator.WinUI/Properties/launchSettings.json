@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "DomesdayDuplicator.WinUI (Unpackaged)": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    },
+    "DomesdayDuplicator.WinUI (Packaged)": {
+      "commandName": "MsixPackage",
+      "nativeDebugging": false
+    }
+  }
+}

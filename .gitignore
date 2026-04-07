@@ -1,6 +1,15 @@
 # Build directories
 build/
 build-*/
+bin/
+obj/
+[Oo]ut/
+[Pp]ublish/
+[Aa]rtifacts/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
 
 # Qt generated files
 *.autosave
@@ -19,6 +28,17 @@ build-*/
 *.dll
 *.dylib
 *.exe
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.msixupload
+*.cer
+*.nupkg
+*.trx
+*.coverage
+*.coveragexml
+*.log
 
 # Qt specific
 moc_*.cpp
@@ -32,10 +52,28 @@ Makefile*
 # IDE files
 .vscode/
 .idea/
+.vs/
+**/.vs/
+*.rsuser
+*.suo
+*.sln.docstates
+*.DotSettings.user
 *.creator.user*
+
+# NuGet packages
+packages/
+
+# Test output
+[Tt]est[Rr]esult*/
+
+# Windows App SDK / MSIX packaging
+AppPackages/
+BundleArtifacts/
+MsixContent/
 
 # OS files
 .DS_Store
 Thumbs.db
+Desktop.ini
 *~
 *.swp

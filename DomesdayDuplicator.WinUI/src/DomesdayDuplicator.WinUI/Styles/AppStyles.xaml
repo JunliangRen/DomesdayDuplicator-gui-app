@@ -1,0 +1,49 @@
+<!-- Copyright (C) Simon Inns 2018-2019 / Junliang Ren 2026 -->
+<!-- GNU General Public License v3.0 -->
+<!--
+    Application-wide styles for a cohesive, modern WinUI 3 look.
+    Card-based layout with subtle elevation and consistent spacing.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ── Card Style ─────────────────────────────────────────── -->
+    <!-- A bordered card with rounded corners and subtle background.
+         Used throughout the app for grouping related content. -->
+    <Style x:Key="CardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <!-- ── Accent Card Style ──────────────────────────────────── -->
+    <Style x:Key="AccentCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <!-- ── Status Indicator Colors ────────────────────────────── -->
+    <SolidColorBrush x:Key="StatusConnectedBrush" Color="#10B981" />
+    <SolidColorBrush x:Key="StatusDisconnectedBrush" Color="#6B7280" />
+    <SolidColorBrush x:Key="StatusCapturingBrush" Color="#EF4444" />
+    <SolidColorBrush x:Key="StatusWarningBrush" Color="#F59E0B" />
+
+    <!-- ── Monospace Text Style ───────────────────────────────── -->
+    <Style x:Key="MonospaceTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Cascadia Code, Consolas, Courier New, monospace" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <!-- ── Stat Value Style ───────────────────────────────────── -->
+    <Style x:Key="StatValueStyle" TargetType="TextBlock"
+           BasedOn="{StaticResource BodyStrongTextBlockStyle}">
+        <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI" />
+        <Setter Property="FontSize" Value="28" />
+    </Style>
+
+
+</ResourceDictionary>

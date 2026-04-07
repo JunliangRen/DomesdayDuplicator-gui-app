@@ -1,0 +1,178 @@
+<!-- Copyright (C) Simon Inns 2018-2019 / Junliang Ren 2026 -->
+<!-- GNU General Public License v3.0 -->
+<!--
+    Settings page: application configuration with modern card-based layout.
+    Matches the original configurationdialog.ui tabs.
+-->
+<Page
+    x:Class="DomesdayDuplicator.WinUI.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    NavigationCacheMode="Required">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="36,24,36,24">
+        <StackPanel Spacing="16" MaxWidth="960">
+
+            <TextBlock Text="Settings"
+                       Style="{StaticResource TitleTextBlockStyle}"
+                       Margin="0,0,0,8" />
+
+            <!-- ── Capture Settings ────────────────────────────── -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Padding="24" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE714;" FontSize="18"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Text="Capture"
+                                   Style="{StaticResource SubtitleTextBlockStyle}" />
+                    </StackPanel>
+
+                    <Grid ColumnSpacing="16" RowSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+
+                        <TextBox Grid.Row="0" Grid.Column="0"
+                                 Header="Capture Directory"
+                                 Text="{x:Bind ViewModel.Config.CaptureDirectory, Mode=TwoWay}"
+                                 PlaceholderText="Select capture directory..." />
+                        <Button Grid.Row="0" Grid.Column="1" Content="Browse..."
+                                Click="BrowseCaptureDir_Click"
+                                VerticalAlignment="Bottom" />
+
+                        <ComboBox Grid.Row="1" Grid.Column="0"
+                                  Header="Capture Format"
+                                  ItemsSource="{x:Bind ViewModel.CaptureFormatOptions}"
+                                  SelectedIndex="{x:Bind ViewModel.SelectedCaptureFormatIndex, Mode=TwoWay}"
+                                  MinWidth="250" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ── USB Settings ────────────────────────────────── -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Padding="24" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE839;" FontSize="18"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Text="USB Device"
+                                   Style="{StaticResource SubtitleTextBlockStyle}" />
+                    </StackPanel>
+
+                    <Grid ColumnSpacing="16" RowSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+
+                        <TextBox Grid.Row="0" Grid.Column="0"
+                                 Header="Vendor ID"
+                                 Text="{x:Bind ViewModel.VendorIdHex, Mode=TwoWay}"
+                                 PlaceholderText="0x1D50" FontFamily="Consolas" />
+                        <TextBox Grid.Row="0" Grid.Column="1"
+                                 Header="Product ID"
+                                 Text="{x:Bind ViewModel.ProductIdHex, Mode=TwoWay}"
+                                 PlaceholderText="0x603B" FontFamily="Consolas" />
+
+                        <ComboBox Grid.Row="1" Grid.Column="0"
+                                  Header="Disk Buffer Queue Size"
+                                  ItemsSource="{x:Bind ViewModel.BufferSizeOptions}"
+                                  SelectedIndex="{x:Bind ViewModel.SelectedBufferSizeIndex, Mode=TwoWay}"
+                                  MinWidth="200" />
+
+                        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Spacing="8">
+                            <CheckBox Content="Use small USB transfers (128 KB, more reliable)"
+                                      IsChecked="{x:Bind ViewModel.Config.UseSmallUsbTransfers, Mode=TwoWay}" />
+                            <CheckBox Content="Use WinUSB API (recommended on Windows)"
+                                      IsChecked="{x:Bind ViewModel.Config.UseWinUsb, Mode=TwoWay}" />
+                            <CheckBox Content="Use async file I/O (overlapped writes)"
+                                      IsChecked="{x:Bind ViewModel.Config.UseAsyncFileIo, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <InfoBar IsOpen="True" Severity="Informational"
+                             Title="Note"
+                             Message="Changes to USB settings require restarting the device connection."
+                             IsClosable="False" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── UI Settings ─────────────────────────────────── -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Padding="24" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE771;" FontSize="18"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Text="User Interface"
+                                   Style="{StaticResource SubtitleTextBlockStyle}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="8">
+                        <CheckBox Content="Show RMS amplitude as number"
+                                  IsChecked="{x:Bind ViewModel.Config.ShowAmplitudeLabel, Mode=TwoWay}" />
+                        <CheckBox Content="Show RMS amplitude as chart"
+                                  IsChecked="{x:Bind ViewModel.Config.ShowAmplitudeChart, Mode=TwoWay}" />
+                        <CheckBox Content="Show advanced capture statistics"
+                                  IsChecked="{x:Bind ViewModel.Config.ShowAdvancedCaptureStats, Mode=TwoWay}" />
+                        <CheckBox Content="Reset notes when disc side changes"
+                                  IsChecked="{x:Bind ViewModel.Config.ResetNotesOnSideChange, Mode=TwoWay}" />
+                        <CheckBox Content="Reset mint marks when disc side changes"
+                                  IsChecked="{x:Bind ViewModel.Config.ResetMintMarksOnSideChange, Mode=TwoWay}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ── About Card ──────────────────────────────────── -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel Padding="24" Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE946;" FontSize="18"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Text="About"
+                                   Style="{StaticResource SubtitleTextBlockStyle}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}">
+                            <Run Text="Domesday Duplicator v" />
+                            <Run Text="{x:Bind ViewModel.AppVersion}" />
+                        </TextBlock>
+                        <TextBlock Text="{x:Bind ViewModel.Copyright}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="{x:Bind ViewModel.License}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+
+                    <HyperlinkButton Content="View documentation"
+                                     NavigateUri="https://simoninns.github.io/DomesdayDuplicator-docs" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Action buttons ──────────────────────────────── -->
+            <Grid ColumnSpacing="12" Margin="0,8,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="1" Content="Restore Defaults"
+                        Command="{x:Bind ViewModel.RestoreDefaultsCommand}" />
+                <Button Grid.Column="2" Content="Save Settings"
+                        Command="{x:Bind ViewModel.SaveCommand}"
+                        Style="{StaticResource AccentButtonStyle}" />
+            </Grid>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>
